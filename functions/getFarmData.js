@@ -5,13 +5,16 @@ exports.handler = async (event, context) => {
     const farmId = '3180392530100142';
     const url = `https://sfl.world/map/${farmId}`;
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
+    const status = response.status;
+    if (!response.ok) {
+      throw new Error(`Erro HTTP: ${status} - ${response.statusText}`);
+    }
     const html = await response.text();
 
-    // Parsear o HTML (ajuste o seletor conforme o DOM do sfl.world)
+    // Parsear o HTML
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    const patches = doc.querySelectorAll('table td'); // Placeholder
+    const patches = doc.querySelectorAll('table td'); // Ajuste conforme o DOM real
 
     const farmData = Array.from(patches).map((td, index) => ({
       patch: index + 1,
@@ -24,10 +27,10 @@ exports.handler = async (event, context) => {
       body: JSON.stringify(farmData)
     };
   } catch (error) {
-    console.error('Erro ao buscar dados:', error);
+    console.error('Erro detalhado:', error.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Erro ao buscar dados do sfl.world' })
+      body: JSON.stringify({ error: error.message })
     };
   }
 };
