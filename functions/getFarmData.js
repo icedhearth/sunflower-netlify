@@ -3,7 +3,7 @@ const { JSDOM } = require('jsdom');
 
 exports.handler = async (event, context) => {
   try {
-    const farmId = '3180392530100142'; // Substitua pelo ID desejado
+    const farmId = '3180392530100142'; // Substitua pelo ID correto, se necessário
     const url = `https://sfl.world/map/${farmId}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
@@ -12,18 +12,22 @@ exports.handler = async (event, context) => {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
-    // Seleciona todos os <span> com <div class="small"> dentro
-    const patchElements = doc.querySelectorAll('span:has(div.small)');
+    // Seleciona todos os containers de patches
+    const patchContainers = doc.querySelectorAll('div.position-relative');
 
-    const farmData = Array.from(patchElements).map((span, index) => {
-      // Extrai o número do patch do atributo title
-      const title = span.getAttribute('title') || '';
-      const patchNumber = title.includes('Left:') 
-        ? parseInt(title.split(':')[1].trim()) 
+    // Mapeia os dados de cada patch
+    const farmData = Array.from(patchContainers).map((container, index) => {
+      // Extrai o número do patch do atributo onclick
+      const onclick = container.getAttribute('onclick') || '';
+      const patchNumber = onclick.includes('Left:') 
+        ? parseInt(onclick.split(':')[1].trim().replace("')", '')) 
         : index + 1;
 
-      // Extrai as colheitas restantes do <div class="small">
-      const harvestsRemaining = parseInt(span.querySelector('div.small').textContent.trim()) || 0;
+      // Pega o número de colheitas restantes
+      const span = container.querySelector('span:has(div.small)');
+      const harvestsRemaining = span 
+        ? parseInt(span.querySelector('div.small').textContent.trim()) || 0 
+        : 0;
 
       return {
         patch: patchNumber,
@@ -31,16 +35,17 @@ exports.handler = async (event, context) => {
       };
     });
 
-    // Ordena por número do patch
-    farmData.sort((a, b) => a.patch - b.patch);
+    // Remove duplicatas mantendo apenas a primeira ocorrência de cada patch
+    const uniquePatches = Array.from(new Set(farmData.map(p => p.patch)))
+      .map(patch => farmData.find(p => p.patch === patch));
 
     return {
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*' // Para CORS
+        'Access-Control-Allow-Origin': '*'
       },
-      body: JSON.stringify(farmData)
+      body: JSON.stringify(uniquePatches)
     };
   } catch (error) {
     return {
