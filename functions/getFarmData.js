@@ -1,4 +1,5 @@
 const fetch = require('node-fetch');
+const { JSDOM } = require('jsdom');
 
 exports.handler = async (event, context) => {
   try {
@@ -11,9 +12,9 @@ exports.handler = async (event, context) => {
     }
     const html = await response.text();
 
-    // Parsear o HTML
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
+    // Usar jsdom para parsear o HTML
+    const dom = new JSDOM(html);
+    const doc = dom.window.document;
     const patches = doc.querySelectorAll('table td'); // Ajuste conforme o DOM real
 
     const farmData = Array.from(patches).map((td, index) => ({
